@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>My Work Diary</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+  </head>
+  <body>
+    <main class="app-shell">
+      <section class="hero">
+        <div>
+          <p class="eyebrow">Personal work planner</p>
+          <h1>My Work Diary</h1>
+          <p class="hero-text">Write your work, set the reminder time, and keep every entry saved with date and time.</p>
+        </div>
+        <div class="date-card">
+          <span>Today</span>
+          <strong>{{ current_datetime | replace("T", " ") }}</strong>
+        </div>
+      </section>
+
+      <section class="stats" aria-label="Diary summary">
+        <article>
+          <span>Total work</span>
+          <strong>{{ total }}</strong>
+        </article>
+        <article>
+          <span>Today</span>
+          <strong>{{ today_count }}</strong>
+        </article>
+        <article>
+          <span>Due now</span>
+          <strong>{{ due }}</strong>
+        </article>
+        <article>
+          <span>Completed</span>
+          <strong>{{ completed }}</strong>
+        </article>
+      </section>
+
+      <section class="workspace">
+        <form class="entry-form" method="post" action="{{ url_for('add_entry') }}">
+          <h2>Add Diary Work</h2>
+
+          <label>
+            Work title
+            <input name="title" placeholder="Example: Complete maths homework" required>
+          </label>
+
+          <label>
+            Subject
+            <input name="subject" placeholder="Example: Maths, Science, English">
+          </label>
+
+          <label>
+            Reminder date and time
+            <input type="datetime-local" name="reminder_at" value="{{ current_datetime }}" required>
+          </label>
+
+          <label>
+            Notes
+            <textarea name="notes" rows="5" placeholder="Write details, page numbers, teacher instructions, or anything to remember."></textarea>
+          </label>
+
+          <button type="submit">Save Work</button>
+        </form>
+
+        <section class="entries" aria-label="Saved diary entries">
+          <div class="section-heading">
+            <h2>Saved Work</h2>
+            <span>{{ total }} entries</span>
+          </div>
+
+          {% if entries %}
+            <div class="entry-list">
+              {% for entry in entries %}
+                <article class="entry-card {{ entry | status }}">
+                  <div class="entry-top">
+                    <div>
+                      <span class="subject">{{ entry.subject }}</span>
+                      <h3>{{ entry.title }}</h3>
+                    </div>
+                    <span class="status-pill">{{ entry | status }}</span>
+                  </div>
+
+                  {% if entry.notes %}
+                    <p class="notes">{{ entry.notes }}</p>
+                  {% endif %}
+
+                  <dl class="time-grid">
+                    <div>
+                      <dt>Reminder</dt>
+                      <dd>{{ entry.reminder_at | display_time }}</dd>
+                    </div>
+                    <div>
+                      <dt>Entered</dt>
+                      <dd>{{ entry.created_at }}</dd>
+                    </div>
+                  </dl>
+
+                  <div class="actions">
+                    <form method="post" action="{{ url_for('complete_entry', entry_id=entry.id) }}">
+                      <button type="submit" class="secondary">
+                        {% if entry.completed %}Mark Pending{% else %}Mark Done{% endif %}
+                      </button>
+                    </form>
+                    <form method="post" action="{{ url_for('delete_entry', entry_id=entry.id) }}">
+                      <button type="submit" class="danger">Delete</button>
+                    </form>
+                  </div>
+                </article>
+              {% endfor %}
+            </div>
+          {% else %}
+            <div class="empty-state">
+              <h3>No diary work saved yet</h3>
+              <p>Add your first work item with a reminder date and time.</p>
+            </div>
+          {% endif %}
+        </section>
+      </section>
+    </main>
+  </body>
+</html>

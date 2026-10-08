@@ -16,7 +16,7 @@
         </div>
         <div class="date-card">
           <span>Today</span>
-          <strong>{{ current_datetime | replace("T", " ") }}</strong>
+          <strong id="todayDateTime">{{ current_datetime | replace("T", " ") }}</strong>
         </div>
       </section>
 
@@ -55,7 +55,7 @@
 
           <label>
             Reminder date and time
-            <input type="datetime-local" name="reminder_at" value="{{ current_datetime }}" required>
+            <input id="reminderAt" type="datetime-local" name="reminder_at" value="{{ current_datetime }}" required>
           </label>
 
           <label>
@@ -121,5 +121,6 @@
         </section>
       </section>
     </main>
+    <script src="{{ url_for('static', filename='app.js') }}"></script>
   </body>
 </html>

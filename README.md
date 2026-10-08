@@ -86,6 +86,15 @@ Then open this URL in your browser:
 http://127.0.0.1:5000
 ```
 
+On Windows, you can also double-click:
+
+```text
+start_work_diary.bat
+```
+
+That file moves into the project folder, installs requirements if needed, and
+starts the local server.
+
 ## How to Use
 
 1. Enter the work title.
@@ -95,6 +104,10 @@ http://127.0.0.1:5000
 5. Click `Save Work`.
 6. Use `Mark Done` when the work is completed.
 7. Use `Delete` to remove work you no longer need.
+
+The date shown at the top updates automatically from your computer clock when
+you open the website. The reminder field also starts with the current date and
+time, so every new entry is ready for today's work.
 
 ## Data Storage
 

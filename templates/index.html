@@ -1,126 +1,225 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>My Work Diary</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
-  </head>
-  <body>
-    <main class="app-shell">
-      <section class="hero">
-        <div>
-          <p class="eyebrow">Personal work planner</p>
-          <h1>My Work Diary</h1>
-          <p class="hero-text">Write your work, set the reminder time, and keep every entry saved with date and time.</p>
-        </div>
-        <div class="date-card">
-          <span>Today</span>
-          <strong id="todayDateTime">{{ current_datetime | replace("T", " ") }}</strong>
-        </div>
-      </section>
-
-      <section class="stats" aria-label="Diary summary">
-        <article>
-          <span>Total work</span>
-          <strong>{{ total }}</strong>
-        </article>
-        <article>
-          <span>Today</span>
-          <strong>{{ today_count }}</strong>
-        </article>
-        <article>
-          <span>Due now</span>
-          <strong>{{ due }}</strong>
-        </article>
-        <article>
-          <span>Completed</span>
-          <strong>{{ completed }}</strong>
-        </article>
-      </section>
-
-      <section class="workspace">
-        <form class="entry-form" method="post" action="{{ url_for('add_entry') }}">
-          <h2>Add Diary Work</h2>
-
-          <label>
-            Work title
-            <input name="title" placeholder="Example: Complete maths homework" required>
-          </label>
-
-          <label>
-            Subject
-            <input name="subject" placeholder="Example: Maths, Science, English">
-          </label>
-
-          <label>
-            Reminder date and time
-            <input id="reminderAt" type="datetime-local" name="reminder_at" value="{{ current_datetime }}" required>
-          </label>
-
-          <label>
-            Notes
-            <textarea name="notes" rows="5" placeholder="Write details, page numbers, teacher instructions, or anything to remember."></textarea>
-          </label>
-
-          <button type="submit">Save Work</button>
-        </form>
-
-        <section class="entries" aria-label="Saved diary entries">
-          <div class="section-heading">
-            <h2>Saved Work</h2>
-            <span>{{ total }} entries</span>
-          </div>
-
-          {% if entries %}
-            <div class="entry-list">
-              {% for entry in entries %}
-                <article class="entry-card {{ entry | status }}">
-                  <div class="entry-top">
-                    <div>
-                      <span class="subject">{{ entry.subject }}</span>
-                      <h3>{{ entry.title }}</h3>
-                    </div>
-                    <span class="status-pill">{{ entry | status }}</span>
-                  </div>
-
-                  {% if entry.notes %}
-                    <p class="notes">{{ entry.notes }}</p>
-                  {% endif %}
-
-                  <dl class="time-grid">
-                    <div>
-                      <dt>Reminder</dt>
-                      <dd>{{ entry.reminder_at | display_time }}</dd>
-                    </div>
-                    <div>
-                      <dt>Entered</dt>
-                      <dd>{{ entry.created_at }}</dd>
-                    </div>
-                  </dl>
-
-                  <div class="actions">
-                    <form method="post" action="{{ url_for('complete_entry', entry_id=entry.id) }}">
-                      <button type="submit" class="secondary">
-                        {% if entry.completed %}Mark Pending{% else %}Mark Done{% endif %}
-                      </button>
-                    </form>
-                    <form method="post" action="{{ url_for('delete_entry', entry_id=entry.id) }}">
-                      <button type="submit" class="danger">Delete</button>
-                    </form>
-                  </div>
-                </article>
-              {% endfor %}
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Daily Work Diary | School & Work Journal</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <div class="diary-wrapper">
+        <!-- Notebook Header Banner -->
+        <header class="diary-header">
+            <div class="header-branding">
+                <div class="book-icon">📖</div>
+                <div>
+                    <h1 class="diary-title">Daily Work Diary</h1>
+                    <p class="diary-subtitle">School & Personal Activity Record • Real-time Logs & Reminders</p>
+                </div>
             </div>
-          {% else %}
-            <div class="empty-state">
-              <h3>No diary work saved yet</h3>
-              <p>Add your first work item with a reminder date and time.</p>
+
+            <!-- Live Clock & Calendar Ribbon -->
+            <div class="live-clock-card">
+                <div class="clock-display" id="liveClock">00:00:00 AM</div>
+                <div class="date-display" id="liveDate">Loading date...</div>
+                <div class="reminder-permission-btn" id="notifBtn">
+                    <span id="notifIcon">🔔</span>
+                    <span id="notifText">Enable Notifications</span>
+                </div>
             </div>
-          {% endif %}
+        </header>
+
+        <!-- Summary Stats Ribbon -->
+        <section class="stats-row">
+            <div class="stat-card">
+                <div class="stat-icon icon-blue">📋</div>
+                <div class="stat-content">
+                    <div class="stat-number" id="statToday">0</div>
+                    <div class="stat-label">Today's Works</div>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon icon-amber">⏳</div>
+                <div class="stat-content">
+                    <div class="stat-number" id="statPending">0</div>
+                    <div class="stat-label">Pending</div>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon icon-green">✅</div>
+                <div class="stat-content">
+                    <div class="stat-number" id="statCompleted">0</div>
+                    <div class="stat-label">Completed</div>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon icon-purple">📚</div>
+                <div class="stat-content">
+                    <div class="stat-number" id="statTotal">0</div>
+                    <div class="stat-label">Total Entries</div>
+                </div>
+            </div>
         </section>
-      </section>
-    </main>
-    <script src="{{ url_for('static', filename='app.js') }}"></script>
-  </body>
+
+        <!-- Main Diary Layout: Left Form + Right Notebook Pages -->
+        <main class="main-layout">
+            <!-- Left Side: Add Work Entry Form -->
+            <aside class="diary-form-pane">
+                <div class="pane-card">
+                    <div class="pane-header">
+                        <h2>✍️ Write in Diary</h2>
+                        <span class="diary-stamp">NEW ENTRY</span>
+                    </div>
+
+                    <form id="entryForm">
+                        <div class="form-group">
+                            <label for="workTitle">Work / Task Title <span class="required">*</span></label>
+                            <input type="text" id="workTitle" placeholder="e.g., Math Exercise 4.2 / English Essay" required autocomplete="off">
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="workCategory">Subject / Category</label>
+                                <select id="workCategory">
+                                    <option value="Homework">📚 Homework</option>
+                                    <option value="Classwork">✏️ Classwork</option>
+                                    <option value="Project">🔬 Project / Lab</option>
+                                    <option value="Revision">📝 Revision / Test</option>
+                                    <option value="Assignment">📂 Assignment</option>
+                                    <option value="Office / Work">💼 Office / Work</option>
+                                    <option value="Personal">🌟 Personal Task</option>
+                                    <option value="General" selected>📌 General</option>
+                                </select>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="workPriority">Priority</label>
+                                <select id="workPriority">
+                                    <option value="Normal" selected>🟢 Normal</option>
+                                    <option value="Medium">🟡 Medium</option>
+                                    <option value="High">🔴 High</option>
+                                    <option value="Urgent">🚨 Urgent</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="workDesc">Details / Notes / Instructions</label>
+                            <textarea id="workDesc" rows="3" placeholder="Write pages, questions, teacher's remarks or steps..."></textarea>
+                        </div>
+
+                        <div class="form-group reminder-box">
+                            <label for="workReminder">
+                                ⏰ Reminder Time (Optional)
+                                <small class="help-text">Will alarm you when it's time!</small>
+                            </label>
+                            <input type="datetime-local" id="workReminder">
+                            <div class="quick-time-buttons">
+                                <button type="button" class="btn-quick" onclick="setQuickReminder(15)">+15 min</button>
+                                <button type="button" class="btn-quick" onclick="setQuickReminder(30)">+30 min</button>
+                                <button type="button" class="btn-quick" onclick="setQuickReminder(60)">+1 hr</button>
+                                <button type="button" class="btn-quick" onclick="clearReminder()">Clear</button>
+                            </div>
+                        </div>
+
+                        <button type="submit" class="btn-submit" id="saveBtn">
+                            <span class="btn-icon">🖋️</span> Save in Diary
+                        </button>
+                    </form>
+                </div>
+
+                <!-- Notebook Info Box -->
+                <div class="diary-tip-box">
+                    <div class="tip-header">💡 Auto-Timestamp Guarantee</div>
+                    <p>Every work you enter is permanently tagged with the exact <strong>Year, Month, Date, Day, and Minute</strong> it was recorded!</p>
+                </div>
+            </aside>
+
+            <!-- Right Side: Diary Notebook Ledger -->
+            <section class="diary-entries-pane">
+                <!-- Filter Bar -->
+                <div class="filters-card">
+                    <div class="filter-top">
+                        <div class="search-box">
+                            <span class="search-icon">🔍</span>
+                            <input type="text" id="searchInput" placeholder="Search tasks, notes or subjects...">
+                        </div>
+                        <div class="quick-filters">
+                            <button class="filter-pill active" data-date="today" id="btnFilterToday">📅 Today's Page</button>
+                            <button class="filter-pill" data-date="all" id="btnFilterAll">📖 Full Diary</button>
+                            <input type="date" id="datePickerFilter" title="Select specific date">
+                        </div>
+                    </div>
+
+                    <div class="filter-bottom">
+                        <div class="filter-group">
+                            <label>Category:</label>
+                            <select id="categoryFilter">
+                                <option value="all">All Categories</option>
+                                <option value="Homework">Homework</option>
+                                <option value="Classwork">Classwork</option>
+                                <option value="Project">Project</option>
+                                <option value="Revision">Revision</option>
+                                <option value="Assignment">Assignment</option>
+                                <option value="Office / Work">Office / Work</option>
+                                <option value="Personal">Personal</option>
+                                <option value="General">General</option>
+                            </select>
+                        </div>
+
+                        <div class="filter-group">
+                            <label>Status:</label>
+                            <select id="statusFilter">
+                                <option value="all">All</option>
+                                <option value="pending">⏳ Pending</option>
+                                <option value="completed">✅ Done</option>
+                            </select>
+                        </div>
+
+                        <button class="btn-print" onclick="window.print()" title="Print this diary page">
+                            🖨️ Print Page
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Active Date Heading -->
+                <div class="page-ribbon">
+                    <div class="page-title" id="currentViewTitle">Today's Works Ledger</div>
+                    <div class="entries-counter" id="entriesCount">Showing 0 entries</div>
+                </div>
+
+                <!-- Entries List Styled Like Diary Ledger -->
+                <div class="diary-ledger" id="entriesContainer">
+                    <div class="empty-state">
+                        <div class="empty-emoji">📓</div>
+                        <h3>Your diary is ready for today!</h3>
+                        <p>Write your first work or homework on the left to start logging.</p>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Active Reminder Modal Popup -->
+    <div class="modal-overlay" id="alarmModal">
+        <div class="modal-card">
+            <div class="modal-bell">🔔</div>
+            <div class="modal-badge">WORK REMINDER ALARM</div>
+            <h2 id="modalTaskTitle">Task Reminder!</h2>
+            <p id="modalTaskCategory" class="modal-cat">Homework</p>
+            <p id="modalTaskDesc" class="modal-desc">Details of the work...</p>
+            <div class="modal-time" id="modalTaskTime">Due: 09:30 AM</div>
+            <div class="modal-actions">
+                <button class="btn-modal-done" id="modalDoneBtn">Mark Work Done</button>
+                <button class="btn-modal-dismiss" id="modalDismissBtn">Dismiss Reminder</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/js/app.js"></script>
+</body>
 </html>

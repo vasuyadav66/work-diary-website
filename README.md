@@ -1,141 +1,71 @@
-# My Work Diary Website
+# 📖 Daily Work Diary Web App (School Almanac & Work Log)
 
-My Work Diary is a simple Python Flask web application for saving daily work,
-tasks, assignments, and reminders in one clean place. It is inspired by the way
-students maintain a school diary, but it is renamed and designed as a work diary
-so it can be used for personal tasks, study work, project work, or daily plans.
+A modern, responsive web application inspired by traditional school diaries/notebooks to track your daily tasks, homework, and work activities with accurate automatic timestamps and audio/desktop reminders.
 
-The app lets you enter a work title, subject/category, reminder date and time,
-and detailed notes. Every saved entry also stores the exact date and time when it
-was created, so you can see when you added the work and when it should be done.
+---
 
-## About This Application
+## ✨ Features
 
-This application is useful when you want to remember your work with proper date
-and time details. Instead of writing tasks on paper, you can save them in the
-browser and keep them organized. The home page shows a summary of all saved work,
-today's work, due work, and completed work.
+- **School Diary / Notebook Aesthetic**:
+  - Classic diary ledger layout with subject tags, priorities, and clean notebook styling.
+  - Live digital clock with seconds, day, month, date, and year in the header.
+- **Accurate Automatic Timestamps**:
+  - Every work entry automatically captures and saves the exact **Year, Month, Date, Day of the Week, and Time** (e.g., `Monday, 19 October 2026 at 09:30 AM`).
+- **Reminders & Alarms ("Remember me with time")**:
+  - Set specific reminder times (or quick +15m, +30m, +1h buttons).
+  - Built-in Web Audio API melodic chime sound synthesizer (no external audio files needed).
+  - Browser desktop notifications (works even if you are on another tab).
+  - Interactive popup alarm banner with options to "Mark Done" or "Dismiss".
+- **Diary Management**:
+  - Categorize by Homework, Classwork, Project, Revision, Office Work, Personal, etc.
+  - Set priority (Normal, Medium, High, Urgent).
+  - Mark completed with satisfying checkmark and strikethrough.
+  - Delete entries anytime.
+- **Ledger Filtering & Search**:
+  - Filter by **Today's Page**, **Full Diary History**, or choose any specific date on the calendar.
+  - Filter by Category or Completion Status.
+  - Real-time search across task titles and notes.
+- **Print Diary Page**:
+  - Ready-to-print view formatted like a physical school diary ledger page.
 
-It is built for local use with Python and Flask. The data is stored in a JSON
-file on your computer, so you do not need a database to run it.
+---
 
-## Features
+## 🚀 How to Run
 
-- Add work with title, subject, notes, reminder date, and reminder time.
-- Save the exact created date and time for every entry.
-- View all saved work in a clean card layout.
-- See quick summary counts for total work, today's work, due work, and completed
-  work.
-- Mark any work item as done or pending.
-- Delete work items that are no longer needed.
-- Store diary data locally in a JSON file.
-- Responsive design that works on desktop and smaller screens.
+1. Open your terminal in this project folder:
+   ```bash
+   cd "C:\Users\User\.gemini\antigravity\scratch\work_diary"
+   ```
 
-## Tech Stack
+2. (Optional) Install dependencies if needed:
+   ```bash
+   pip install -r requirements.txt
+   ```
 
-- Python
-- Flask
-- HTML
-- CSS
-- JSON file storage
+3. Start the Flask application:
+   ```bash
+   python app.py
+   ```
 
-## Project Structure
+4. Open your browser and visit:
+   ```
+   http://127.0.0.1:5000
+   ```
 
-```text
-work-diary-website/
-├── app.py
-├── requirements.txt
-├── README.md
-├── static/
-│   └── styles.css
+---
+
+## 🗂️ Project Structure
+
+```
+work_diary/
+├── app.py                 # Flask server with SQLite database & REST API
+├── requirements.txt       # Dependencies (Flask)
+├── work_diary.db          # SQLite persistent database
 ├── templates/
-│   └── index.html
-└── data/
-    └── diary_entries.json
+│   └── index.html         # School diary HTML interface
+└── static/
+    ├── css/
+    │   └── style.css      # Custom styling, notebook aesthetic & animations
+    └── js/
+        └── app.js         # Real-time clock, Web Audio chime, notifications & AJAX
 ```
-
-The `data/diary_entries.json` file is created automatically when entries are
-saved. It is ignored by Git so your personal diary data is not pushed to GitHub.
-
-## Installation
-
-Clone the repository:
-
-```powershell
-git clone https://github.com/vasuyadav66/work-diary-website.git
-cd work-diary-website
-```
-
-Install the required Python package:
-
-```powershell
-python -m pip install -r requirements.txt
-```
-
-## Run the Application
-
-Start the Flask development server:
-
-```powershell
-python app.py
-```
-
-Then open this URL in your browser:
-
-```text
-http://127.0.0.1:5000
-```
-
-On Windows, you can also double-click:
-
-```text
-start_work_diary.bat
-```
-
-That file moves into the project folder, installs requirements if needed, and
-starts the local server.
-
-## How to Use
-
-1. Enter the work title.
-2. Add a subject or category.
-3. Select the reminder date and time.
-4. Write any extra notes.
-5. Click `Save Work`.
-6. Use `Mark Done` when the work is completed.
-7. Use `Delete` to remove work you no longer need.
-
-The date shown at the top updates automatically from your computer clock when
-you open the website. The reminder field also starts with the current date and
-time, so every new entry is ready for today's work.
-
-## Data Storage
-
-This app stores diary entries in:
-
-```text
-data/diary_entries.json
-```
-
-Each entry includes:
-
-- Unique entry ID
-- Work title
-- Subject/category
-- Notes
-- Reminder date and time
-- Created date and time
-- Completion status
-
-## Future Improvements
-
-- Add browser notifications for reminders.
-- Add search and filter options.
-- Add user login.
-- Add calendar view.
-- Add edit option for saved work.
-- Add deployment support for online hosting.
-
-## Author
-
-Created by [vasuyadav66](https://github.com/vasuyadav66).

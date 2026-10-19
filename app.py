@@ -1,152 +1,191 @@
-from __future__ import annotations
-
-from dataclasses import asdict, dataclass
+import sqlite3
 from datetime import datetime
-import json
-from pathlib import Path
-from uuid import uuid4
-
-from flask import Flask, redirect, render_template, request, url_for
-
-
-APP_DIR = Path(__file__).parent
-DATA_FILE = APP_DIR / "data" / "diary_entries.json"
+from flask import Flask, render_template, request, jsonify
 
 app = Flask(__name__)
+DB_NAME = "work_diary.db"
 
+def get_db():
+    conn = sqlite3.connect(DB_NAME)
+    conn.row_factory = sqlite3.Row
+    return conn
 
-@dataclass
-class DiaryEntry:
-    id: str
-    title: str
-    subject: str
-    notes: str
-    reminder_at: str
-    created_at: str
-    completed: bool = False
+def init_db():
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS entries (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            title TEXT NOT NULL,
+            category TEXT DEFAULT 'General',
+            description TEXT,
+            priority TEXT DEFAULT 'Normal',
+            status TEXT DEFAULT 'pending',
+            created_iso TEXT NOT NULL,
+            created_date TEXT NOT NULL,
+            created_time TEXT NOT NULL,
+            created_day TEXT NOT NULL,
+            created_year INTEGER NOT NULL,
+            created_month TEXT NOT NULL,
+            reminder_time TEXT,
+            is_reminded INTEGER DEFAULT 0
+        )
+    """)
+    conn.commit()
+    conn.close()
 
-
-def now_text() -> str:
-    return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
-
-def load_entries() -> list[DiaryEntry]:
-    if not DATA_FILE.exists():
-        return []
-
-    entries = json.loads(DATA_FILE.read_text(encoding="utf-8"))
-    return [DiaryEntry(**entry) for entry in entries]
-
-
-def save_entries(entries: list[DiaryEntry]) -> None:
-    DATA_FILE.parent.mkdir(parents=True, exist_ok=True)
-    DATA_FILE.write_text(
-        json.dumps([asdict(entry) for entry in entries], indent=2),
-        encoding="utf-8",
-    )
-
-
-def parse_reminder(value: str) -> datetime:
-    return datetime.strptime(value, "%Y-%m-%dT%H:%M")
-
-
-def display_datetime(value: str) -> str:
-    try:
-        return parse_reminder(value).strftime("%d %B %Y, %I:%M %p")
-    except ValueError:
-        return value
-
-
-def entry_status(entry: DiaryEntry) -> str:
-    if entry.completed:
-        return "completed"
-    try:
-        if parse_reminder(entry.reminder_at) < datetime.now():
-            return "due"
-    except ValueError:
-        return "planned"
-    return "planned"
-
-
-@app.template_filter("display_time")
-def display_time(value: str) -> str:
-    return display_datetime(value)
-
-
-@app.template_filter("status")
-def status(value: DiaryEntry) -> str:
-    return entry_status(value)
-
+# Initialize DB on start
+init_db()
 
 @app.route("/")
 def index():
-    entries = load_entries()
-    entries.sort(key=lambda entry: entry.reminder_at)
+    return render_template("index.html")
 
-    today = datetime.now().date()
-    total = len(entries)
-    completed = sum(1 for entry in entries if entry.completed)
-    due = sum(1 for entry in entries if entry_status(entry) == "due")
-    today_count = 0
-    for entry in entries:
-        try:
-            if parse_reminder(entry.reminder_at).date() == today:
-                today_count += 1
-        except ValueError:
-            pass
+@app.route("/api/entries", methods=["GET"])
+def get_entries():
+    date_filter = request.args.get("date")
+    category_filter = request.args.get("category")
+    status_filter = request.args.get("status")
+    search_query = request.args.get("search")
 
-    return render_template(
-        "index.html",
-        entries=entries,
-        total=total,
-        completed=completed,
-        due=due,
-        today_count=today_count,
-        current_datetime=datetime.now().strftime("%Y-%m-%dT%H:%M"),
-    )
+    query = "SELECT * FROM entries WHERE 1=1"
+    params = []
 
+    if date_filter:
+        query += " AND created_date = ?"
+        params.append(date_filter)
 
-@app.post("/add")
+    if category_filter and category_filter != "all":
+        query += " AND category = ?"
+        params.append(category_filter)
+
+    if status_filter and status_filter != "all":
+        query += " AND status = ?"
+        params.append(status_filter)
+
+    if search_query:
+        query += " AND (title LIKE ? OR description LIKE ?)"
+        term = f"%{search_query}%"
+        params.extend([term, term])
+
+    query += " ORDER BY id DESC"
+
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute(query, params)
+    rows = cursor.fetchall()
+    entries = [dict(row) for row in rows]
+    conn.close()
+
+    return jsonify({"success": True, "entries": entries})
+
+@app.route("/api/entries", methods=["POST"])
 def add_entry():
-    title = request.form["title"].strip()
-    subject = request.form["subject"].strip() or "General"
-    notes = request.form["notes"].strip()
-    reminder_at = request.form["reminder_at"].strip()
+    data = request.get_json() or {}
+    title = data.get("title", "").strip()
+    if not title:
+        return jsonify({"success": False, "error": "Title is required"}), 400
 
-    if title and reminder_at:
-        entries = load_entries()
-        entries.append(
-            DiaryEntry(
-                id=str(uuid4()),
-                title=title,
-                subject=subject,
-                notes=notes,
-                reminder_at=reminder_at,
-                created_at=now_text(),
-            )
-        )
-        save_entries(entries)
+    category = data.get("category", "General").strip()
+    description = data.get("description", "").strip()
+    priority = data.get("priority", "Normal").strip()
+    reminder_time = data.get("reminder_time", "").strip()
 
-    return redirect(url_for("index"))
+    # Accurate time capture
+    now = datetime.now()
+    created_iso = now.isoformat()
+    created_date = now.strftime("%Y-%m-%d")          # e.g., 2026-10-19
+    created_time = now.strftime("%I:%M %p")          # e.g., 09:30 AM
+    created_day = now.strftime("%A")                 # e.g., Monday
+    created_year = now.year                          # e.g., 2026
+    created_month = now.strftime("%B")               # e.g., October
 
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("""
+        INSERT INTO entries (
+            title, category, description, priority, status,
+            created_iso, created_date, created_time, created_day,
+            created_year, created_month, reminder_time, is_reminded
+        ) VALUES (?, ?, ?, ?, 'pending', ?, ?, ?, ?, ?, ?, ?, 0)
+    """, (
+        title, category, description, priority,
+        created_iso, created_date, created_time, created_day,
+        created_year, created_month, reminder_time if reminder_time else None
+    ))
+    conn.commit()
+    new_id = cursor.lastrowid
+    conn.close()
 
-@app.post("/complete/<entry_id>")
-def complete_entry(entry_id: str):
-    entries = load_entries()
-    for entry in entries:
-        if entry.id == entry_id:
-            entry.completed = not entry.completed
-            break
-    save_entries(entries)
-    return redirect(url_for("index"))
+    return jsonify({
+        "success": True,
+        "id": new_id,
+        "message": "Diary entry recorded successfully!"
+    }), 201
 
+@app.route("/api/entries/<int:entry_id>/status", methods=["PATCH"])
+def toggle_status(entry_id):
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("SELECT status FROM entries WHERE id = ?", (entry_id,))
+    row = cursor.fetchone()
+    if not row:
+        conn.close()
+        return jsonify({"success": False, "error": "Entry not found"}), 404
 
-@app.post("/delete/<entry_id>")
-def delete_entry(entry_id: str):
-    entries = [entry for entry in load_entries() if entry.id != entry_id]
-    save_entries(entries)
-    return redirect(url_for("index"))
+    new_status = "completed" if row["status"] == "pending" else "pending"
+    cursor.execute("UPDATE entries SET status = ? WHERE id = ?", (new_status, entry_id))
+    conn.commit()
+    conn.close()
 
+    return jsonify({"success": True, "status": new_status})
+
+@app.route("/api/entries/<int:entry_id>", methods=["DELETE"])
+def delete_entry(entry_id):
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM entries WHERE id = ?", (entry_id,))
+    conn.commit()
+    conn.close()
+    return jsonify({"success": True, "message": "Entry removed"})
+
+@app.route("/api/entries/<int:entry_id>/reminded", methods=["POST"])
+def mark_reminded(entry_id):
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("UPDATE entries SET is_reminded = 1 WHERE id = ?", (entry_id,))
+    conn.commit()
+    conn.close()
+    return jsonify({"success": True})
+
+@app.route("/api/stats", methods=["GET"])
+def get_stats():
+    today_str = datetime.now().strftime("%Y-%m-%d")
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    cursor.execute("SELECT COUNT(*) FROM entries")
+    total = cursor.fetchone()[0]
+
+    cursor.execute("SELECT COUNT(*) FROM entries WHERE status = 'completed'")
+    completed = cursor.fetchone()[0]
+
+    cursor.execute("SELECT COUNT(*) FROM entries WHERE status = 'pending'")
+    pending = cursor.fetchone()[0]
+
+    cursor.execute("SELECT COUNT(*) FROM entries WHERE created_date = ?", (today_str,))
+    today_count = cursor.fetchone()[0]
+
+    conn.close()
+    return jsonify({
+        "total": total,
+        "completed": completed,
+        "pending": pending,
+        "today": today_count
+    })
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    print("=" * 60)
+    print("📖 School Work Diary Web App starting on http://127.0.0.1:5000")
+    print("=" * 60)
+    app.run(debug=True, host="127.0.0.1", port=5000)

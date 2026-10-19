@@ -1,5 +1,10 @@
 __pycache__/
 *.py[cod]
-.venv/
-.pytest_cache/
-data/*.json
+*$py.class
+*.db
+.env
+.venv
+env/
+venv/
+.DS_Store
+*.log
